@@ -54,12 +54,14 @@ export function FoodSelector() {
   const [selectedItems, setSelectedItems] = useState<SelectedFoodItem[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const categories: Category[] = ['cơm', 'mỳ', 'phở', 'bún', 'trà sữa', 'trà'];
 
   const filteredItems = foodItems.filter(item => item.category === selectedCategory);
 
   const toggleItem = (item: FoodItem) => {
+    if (isLoading) return;
     const existing = selectedItems.find(i => i.id === item.id);
     if (existing) {
       setSelectedItems(selectedItems.filter(i => i.id !== item.id));
@@ -69,6 +71,7 @@ export function FoodSelector() {
   };
 
   const updateQuantity = (id: string, delta: number) => {
+    if (isLoading) return;
     setSelectedItems(selectedItems.map(item => {
       if (item.id === id) {
         const newQty = Math.max(1, item.quantity + delta);
@@ -79,17 +82,19 @@ export function FoodSelector() {
   };
 
   const updateNote = (id: string, note: string) => {
+    if (isLoading) return;
     setSelectedItems(selectedItems.map(item =>
       item.id === id ? { ...item, note } : item
     ));
   };
 
   const handleSendEmail = async () => {
-    if (selectedItems.length === 0) {
-      alert('Hãy chọn ít nhất một món ăn nhé! 💕');
+    if (selectedItems.length === 0 || isLoading) {
+      if (selectedItems.length === 0) alert('Hãy chọn ít nhất một món ăn nhé! 💕');
       return;
     }
 
+    setIsLoading(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://babiyeu-be.fly.dev';
       const response = await fetch(`${apiUrl}/api/send-email`, {
@@ -115,6 +120,8 @@ export function FoodSelector() {
     } catch (error) {
       console.error('Error:', error);
       alert('Có lỗi xảy ra khi kết nối tới server! ❌');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -130,7 +137,8 @@ export function FoodSelector() {
           </div>
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className="lg:hidden p-2 hover:bg-white/10 rounded-full transition-colors"
+            disabled={isLoading}
+            className="lg:hidden p-2 hover:bg-white/10 rounded-full transition-colors disabled:opacity-50"
           >
             <X className="w-6 h-6" />
           </button>
@@ -142,6 +150,7 @@ export function FoodSelector() {
         {categories.map((category) => (
           <button
             key={category}
+            disabled={isLoading}
             onClick={() => {
               setSelectedCategory(category);
               if (window.innerWidth < 1024) {
@@ -154,7 +163,7 @@ export function FoodSelector() {
             className={`w-full text-left px-4 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-between group ${selectedCategory === category
               ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-md scale-[1.02]'
               : 'bg-gray-50 text-gray-600 hover:bg-pink-50 hover:text-pink-600'
-              }`}
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <span className="capitalize">{category}</span>
             <div className={`w-2 h-2 rounded-full transition-all ${selectedCategory === category ? 'bg-white scale-125' : 'bg-transparent group-hover:bg-pink-300'}`} />
@@ -169,7 +178,11 @@ export function FoodSelector() {
             <div key={item.id} className="bg-pink-50/50 rounded-xl p-3 border border-pink-100 space-y-2">
               <div className="flex justify-between items-start">
                 <span className="font-bold text-gray-800 text-sm line-clamp-1">{item.name}</span>
-                <button onClick={() => toggleItem(item)} className="text-gray-400 hover:text-pink-500 transition-colors">
+                <button
+                  onClick={() => toggleItem(item)}
+                  disabled={isLoading}
+                  className="text-gray-400 hover:text-pink-500 transition-colors disabled:opacity-50"
+                >
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -178,12 +191,14 @@ export function FoodSelector() {
                 <div className="flex items-center gap-2 bg-white rounded-lg border border-pink-100 p-1">
                   <button
                     onClick={() => updateQuantity(item.id, -1)}
-                    className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-pink-50 text-pink-500 transition-colors"
+                    disabled={isLoading}
+                    className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-pink-50 text-pink-500 transition-colors disabled:opacity-50"
                   >-</button>
                   <span className="w-6 text-center text-sm font-bold text-gray-700">{item.quantity}</span>
                   <button
                     onClick={() => updateQuantity(item.id, 1)}
-                    className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-pink-50 text-pink-500 transition-colors"
+                    disabled={isLoading}
+                    className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-pink-50 text-pink-500 transition-colors disabled:opacity-50"
                   >+</button>
                 </div>
                 <span className="text-xs font-medium text-pink-600">Số lượng</span>
@@ -191,10 +206,11 @@ export function FoodSelector() {
 
               <input
                 type="text"
+                disabled={isLoading}
                 placeholder="Thêm ghi chú..."
                 value={item.note}
                 onChange={(e) => updateNote(item.id, e.target.value)}
-                className="w-full text-xs bg-white border border-pink-100 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-pink-400 outline-none transition-all placeholder:text-gray-300"
+                className="w-full text-xs bg-white border border-pink-100 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-pink-400 outline-none transition-all placeholder:text-gray-300 disabled:bg-gray-50"
               />
             </div>
           ))}
@@ -215,14 +231,22 @@ export function FoodSelector() {
           </div>
           <button
             onClick={handleSendEmail}
-            disabled={selectedItems.length === 0}
-            className={`w-full py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-xl active:scale-95 ${selectedItems.length > 0
+            disabled={selectedItems.length === 0 || isLoading}
+            className={`w-full py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-xl active:scale-95 ${selectedItems.length > 0 && !isLoading
               ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
               : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
               }`}
           >
-            <Mail className="w-5 h-5" />
-            Gửi cho anh ngay
+            {isLoading ? (
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
+              />
+            ) : (
+              <Mail className="w-5 h-5" />
+            )}
+            {isLoading ? 'Đang gửi...' : 'Gửi cho anh ngay'}
           </button>
         </div>
       </div>
@@ -238,7 +262,7 @@ export function FoodSelector() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setIsSidebarOpen(false)}
+            onClick={() => !isLoading && setIsSidebarOpen(false)}
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
           />
         )}
@@ -258,7 +282,8 @@ export function FoodSelector() {
         <header className="lg:hidden bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-30">
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="p-2 -ml-2 hover:bg-gray-100 rounded-lg transition-colors"
+            disabled={isLoading}
+            className="p-2 -ml-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
           >
             <Menu className="w-6 h-6 text-gray-700" />
           </button>
@@ -271,7 +296,8 @@ export function FoodSelector() {
           <div className="relative">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="p-2 -mr-2 hover:bg-gray-100 rounded-lg transition-colors relative"
+              disabled={isLoading}
+              className="p-2 -mr-2 hover:bg-gray-100 rounded-lg transition-colors relative disabled:opacity-50"
             >
               <ShoppingCart className="w-6 h-6 text-gray-700" />
               {selectedItems.length > 0 && (
@@ -300,9 +326,9 @@ export function FoodSelector() {
                     layout
                     key={item.id}
                     onClick={() => toggleItem(item)}
-                    whileTap={{ scale: 0.98 }}
+                    whileTap={isLoading ? {} : { scale: 0.98 }}
                     className={`group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl cursor-pointer transition-all duration-300 ${isSelected ? 'ring-4 ring-pink-500 ring-offset-2 lg:ring-offset-4 shadow-xl' : 'hover:-translate-y-1'
-                      }`}
+                      } ${isLoading ? 'opacity-70 grayscale-[0.2]' : ''}`}
                   >
                     <div className="relative h-48 sm:h-56 overflow-hidden">
                       <ImageWithFallback
@@ -310,7 +336,9 @@ export function FoodSelector() {
                         alt={item.name}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      {!isLoading && (
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      )}
 
                       <AnimatePresence>
                         {isSelected && (
@@ -348,6 +376,60 @@ export function FoodSelector() {
         </main>
       </div>
 
+      {/* Loading Overlay */}
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-white/80 backdrop-blur-md z-[200] flex flex-col items-center justify-center p-6 text-center"
+          >
+            <motion.div
+              animate={{
+                scale: [1, 1.2, 1],
+                rotate: [0, 10, -10, 0]
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: 2,
+                ease: "easeInOut"
+              }}
+              className="relative mb-8"
+            >
+              <div className="w-24 h-24 bg-pink-100 rounded-full flex items-center justify-center">
+                <UtensilsCrossed className="w-12 h-12 text-pink-500" />
+              </div>
+              <motion.div
+                animate={{ y: [0, -10, 0], opacity: [0, 1, 0] }}
+                transition={{ repeat: Infinity, duration: 1.5, delay: 0.5 }}
+                className="absolute -top-4 -right-2 text-pink-400"
+              >
+                ❤️
+              </motion.div>
+              <motion.div
+                animate={{ y: [0, -15, 0], opacity: [0, 1, 0] }}
+                transition={{ repeat: Infinity, duration: 1.8, delay: 0.2 }}
+                className="absolute -top-2 -left-4 text-pink-300"
+              >
+                💖
+              </motion.div>
+            </motion.div>
+
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Đang gửi menu cho anh...</h2>
+            <p className="text-pink-500 font-medium animate-pulse">Đợi em một chút xíu thôi nhé! 💕</p>
+
+            <div className="mt-8 w-48 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <motion.div
+                animate={{ x: [-200, 200] }}
+                transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                className="w-1/2 h-full bg-gradient-to-r from-pink-500 to-purple-600"
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Success notification */}
       <AnimatePresence>
         {showSuccess && (
@@ -355,7 +437,7 @@ export function FoodSelector() {
             initial={{ y: -100, x: '-50%', opacity: 0 }}
             animate={{ y: 0, x: '-50%', opacity: 1 }}
             exit={{ y: -100, x: '-50%', opacity: 0 }}
-            className="fixed top-4 sm:top-8 left-1/2 bg-white border border-green-100 text-green-600 px-6 sm:px-8 py-4 sm:py-5 rounded-2xl shadow-2xl flex items-center gap-4 z-[100] w-[90%] sm:w-auto"
+            className="fixed top-4 sm:top-8 left-1/2 bg-white border border-green-100 text-green-600 px-6 sm:px-8 py-4 sm:py-5 rounded-2xl shadow-2xl flex items-center gap-4 z-[210] w-[90%] sm:w-auto"
           >
             <div className="bg-green-500 text-white p-2 rounded-full shrink-0">
               <Check className="w-5 h-5 sm:w-6 sm:h-6" />
